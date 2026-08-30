@@ -1,18 +1,22 @@
 class ClusterRpcTransport {
   constructor(nodeId) {
     this.nodeId = nodeId;
-    this.handlers = new Map();
+    this.nodes = new Map();
   }
 
-  registerHandler(method, fn) {
-    this.handlers.set(method, fn);
+  registerNode(nodeId, instance) {
+    this.nodes.set(nodeId, instance);
   }
 
   async send(targetNodeId, method, payload) {
-    if (!this.handlers.has(method)) {
-      throw new Error(`RPC method ${method} not registered`);
+    const target = this.nodes.get(targetNodeId);
+    if (!target) {
+      throw new Error(`Node ${targetNodeId} unreachable`);
     }
-    return this.handlers.get(method)(payload);
+    if (typeof target[method] === 'function') {
+      return target[method](payload.term, payload.candidateId || payload.leaderId);
+    }
+    throw new Error(`Method ${method} not supported`);
   }
 }
 
